@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/white">
+
+    <!-- Image and Name on Top -->
+    <LinearLayout
+        android:id="@+id/imageNameContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:gravity="center_horizontal">
+
+        <!-- Profile Image -->
+        <ImageView
+            android:id="@+id/profileImage"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/connected" />
+
+        <!-- Device Name -->
+        <TextView
+            android:id="@+id/deviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/device_name"
+            android:textColor="#000000"
+            android:textSize="18sp" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginTop="10dp"
+            android:background="@android:color/black" />
+    </LinearLayout>
+
+    <!-- RecyclerView for Device List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvDeviceList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        tools:listitem="@layout/item_message_sent" />
+
+    <!-- Message Input Container -->
+    <LinearLayout
+        android:id="@+id/messageContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/buttonborder"
+        android:padding="8dp"
+        android:gravity="center_vertical">
+
+        <!-- Camera Button -->
+        <ImageView
+            android:id="@+id/camera"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/attachment" />
+
+        <!-- EditText for Message Input -->
+        <EditText
+            android:id="@+id/etMessage"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/enter_your_name"
+            android:inputType="text"
+            android:padding="12dp"
+            tools:ignore="HardcodedText" />
+
+        <!-- Send Message Button -->
+        <ImageView
+            android:id="@+id/btnSendMessage"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/send" />
+    </LinearLayout>
+
+</LinearLayout>

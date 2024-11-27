@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/splashScreen">
+    <fragment
+        android:id="@+id/splashScreen"
+        android:name="com.example.pingme.ui.splashscreen.SplashScreen"
+        android:label="fragment_splash_screen"
+        tools:layout="@layout/fragment_splash_screen" >
+        <action
+            android:id="@+id/action_splashScreen_to_userDetail"
+            app:destination="@id/userDetail"
+            app:popUpTo="@+id/nav_graph"
+            app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_splashScreen_to_discoverDevices"
+            app:destination="@id/discoverDevices" />
+    </fragment>
+    <fragment
+        android:id="@+id/userDetail"
+        android:name="com.example.pingme.ui.userdetail.UserDetail"
+        android:label="fragment_user_detail"
+        tools:layout="@layout/fragment_user_detail" />
+    <fragment
+        android:id="@+id/discoverDevices"
+        android:name="com.example.pingme.ui.homescreen.DiscoverDevices"
+        android:label="fragment_discover_devices"
+        tools:layout="@layout/fragment_discover_devices" >
+        <action
+            android:id="@+id/action_discoverDevices_to_message2"
+            app:destination="@id/message2" />
+    </fragment>
+    <fragment
+        android:id="@+id/message2"
+        android:name="com.example.pingme.ui.message.Message"
+        android:label="fragment_message"
+        tools:layout="@layout/fragment_message" />
+</navigation>

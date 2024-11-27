@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Row 1: Image and Video -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/option_image"
+            android:layout_width="0dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:src="@drawable/image"
+            android:contentDescription="@string/app_name"
+            android:background="?attr/selectableItemBackground" />
+
+        <ImageView
+            android:id="@+id/option_video"
+            android:layout_width="0dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:src="@drawable/youtube_music_song_multimedia_audio_svgrepo_com"
+            android:contentDescription="@string/app_name"
+            android:background="?attr/selectableItemBackground" />
+    </LinearLayout>
+
+    <!-- Spacing -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="8dp" />
+
+    <!-- Row 2: Document and Contact -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/option_document"
+            android:layout_width="0dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:src="@drawable/document"
+            android:contentDescription="@string/app_name"
+            android:background="?attr/selectableItemBackground" />
+
+        <ImageView
+            android:id="@+id/option_contact"
+            android:layout_width="0dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:src="@drawable/contact"
+            android:contentDescription="@string/app_name"
+            android:background="?attr/selectableItemBackground" />
+    </LinearLayout>
+</LinearLayout>

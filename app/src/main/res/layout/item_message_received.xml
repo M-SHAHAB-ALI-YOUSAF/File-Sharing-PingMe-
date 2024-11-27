@@ -1,0 +1,155 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="start"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:gravity="start"
+    android:orientation="vertical">
+
+    <!-- Text Message -->
+    <TextView
+        android:id="@+id/textMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/received_message_background"
+        android:gravity="start"
+        android:maxWidth="250dp"
+        android:padding="10dp"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Video Thumbnail Container -->
+    <FrameLayout
+        android:id="@+id/frameLayout"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="8dp"
+        android:gravity="center">
+
+        <!-- Image Message -->
+        <ImageView
+            android:id="@+id/imageMessage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/app_name"
+            android:maxWidth="250dp"
+            android:maxHeight="250dp"
+            android:scaleType="centerCrop" />
+
+        <!-- Video Icon -->
+        <ImageView
+            android:id="@+id/videoIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/video"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <ProgressBar
+        android:id="@+id/imageProgressBar"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:indeterminate="false"
+        android:visibility="gone" />
+
+
+    <LinearLayout
+        android:id="@+id/documentLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:ignore="UseCompoundDrawables">
+
+        <ImageView
+            android:id="@+id/documentIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/document" />
+
+        <TextView
+            android:id="@+id/documentName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:ellipsize="marquee"
+            android:maxWidth="200dp"
+            android:singleLine="true"
+            android:text="@string/document_name"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/contactLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:background="@drawable/buttonborder"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <!-- Horizontal LinearLayout for Contact Name and Image -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            tools:ignore="UseCompoundDrawables">
+
+            <ImageView
+                android:id="@+id/contactImage"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/contact" />
+            <!-- Contact Name -->
+            <TextView
+                android:id="@+id/contactName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:layout_marginStart="10dp"
+                android:paddingEnd="8dp"
+                android:text="@string/contact_name"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                tools:ignore="RtlSymmetry" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginTop="10dp"
+            android:background="@color/gray" />
+
+        <!-- Details Button below the image and name -->
+        <TextView
+            android:id="@+id/detailsButton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="8dp"
+            android:textAlignment="center"
+            android:text="@string/details"
+            android:textColor="@color/black" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/messageTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="start"
+        android:textColor="@color/gray"
+        android:textSize="14sp" />
+</LinearLayout>
