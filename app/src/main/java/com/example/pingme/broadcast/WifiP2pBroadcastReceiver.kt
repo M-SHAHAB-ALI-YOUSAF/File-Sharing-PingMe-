@@ -51,7 +51,19 @@ class WifiP2pBroadcastReceiver(
                         }
                     }
                 } else {
-                    Log.d("WiFiP2P", "Connection changed: disconnected")
+                    manager.removeGroup(channel, object : WifiP2pManager.ActionListener {
+                        override fun onSuccess() {
+                            Log.d("WiFiP2P", "Group removed successfully after disconnection")
+                            val navController = (context as? MainActivity)?.findNavController(R.id.nav_host_fragment)
+                            navController?.navigate(R.id.action_message2_to_discoverDevices)
+
+                        }
+
+                        override fun onFailure(reason: Int) {
+                            Log.e("WiFiP2P", "Failed to remove group: $reason")
+                        }
+                    })
+
                 }
             }
             WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {

@@ -36,5 +36,9 @@
         android:id="@+id/message2"
         android:name="com.example.pingme.ui.message.Message"
         android:label="fragment_message"
-        tools:layout="@layout/fragment_message" />
+        tools:layout="@layout/fragment_message" >
+        <action
+            android:id="@+id/action_message2_to_discoverDevices"
+            app:destination="@id/discoverDevices" />
+    </fragment>
 </navigation>

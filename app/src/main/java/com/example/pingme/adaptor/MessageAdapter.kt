@@ -57,7 +57,7 @@ class MessageAdapter(
         val messageItem = messages[position]
 
         // Format the timestamp
-        val timestampFormat = SimpleDateFormat("hh:mm", Locale.getDefault())
+        val timestampFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
         val formattedTime = timestampFormat.format(Date(messageItem.timestamp))
 
         when {
@@ -281,13 +281,6 @@ class MessageAdapter(
             context.startActivity(intent)
         }
     }
-
-//    private fun navigateToContactDetails(view: View, bundle: Bundle) {
-//        val navController = view.findNavController()
-//        navController.navigate(R.id.action_currentFragment_to_contactDetailsFragment, bundle)
-//    }
-
-
 
     inner class SentMessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val messageTextView: TextView = view.findViewById(R.id.textMessage)
