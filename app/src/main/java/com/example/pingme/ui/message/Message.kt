@@ -81,21 +81,17 @@ class Message : Fragment(R.layout.fragment_message) {
             val optionsBottomSheet = OptionsBottomSheet { optionType ->
                 when (optionType) {
                     OptionsBottomSheet.OptionType.IMAGE -> {
-                        val intent = Intent(
-                            Intent.ACTION_PICK,
-                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                        ).apply {
+                        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
                             type = "image/*" // Images only
+                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) // Allow multiple selections
                         }
                         startActivityForResult(intent, REQUEST_IMAGE_PICK)
                     }
 
                     OptionsBottomSheet.OptionType.VIDEO -> {
-                        val intent = Intent(
-                            Intent.ACTION_PICK,
-                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                        ).apply {
+                        val intent = Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).apply {
                             type = "video/*" // Videos only
+                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) // Allow multiple selections
                         }
                         startActivityForResult(intent, REQUEST_VIDEO_PICK)
                     }
@@ -124,14 +120,28 @@ class Message : Fragment(R.layout.fragment_message) {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            REQUEST_IMAGE_PICK -> {
-                val imageUri = data?.data
-                imageUri?.let { processImageSelection(it) }
-            }
+            REQUEST_IMAGE_PICK, REQUEST_VIDEO_PICK -> {
+                // Check if multiple items are selected
+                val clipData = data?.clipData
+                val uriList = mutableListOf<Uri>()
 
-            REQUEST_VIDEO_PICK -> {
-                val videoUri = data?.data
-                videoUri?.let { processVideoSelection(it) }
+                if (clipData != null) {
+                    for (i in 0 until clipData.itemCount) {
+                        uriList.add(clipData.getItemAt(i).uri)
+                    }
+                } else {
+                    // Single item selected
+                    data?.data?.let { uriList.add(it) }
+                }
+
+                // Process each selected URI
+                uriList.forEach { uri ->
+                    if (requestCode == REQUEST_IMAGE_PICK) {
+                        processImageSelection(uri)
+                    } else if (requestCode == REQUEST_VIDEO_PICK) {
+                        processVideoSelection(uri)
+                    }
+                }
             }
 
             REQUEST_DOCUMENT_PICK -> {
@@ -338,7 +348,6 @@ class Message : Fragment(R.layout.fragment_message) {
     }
 
 
-
     private fun sendMessage(message: String) {
         thread {
             try {
@@ -356,12 +365,14 @@ class Message : Fragment(R.layout.fragment_message) {
         }
     }
 
+
+
     private fun saveDocumentToDeviceStorage(byteArray: ByteArray, fileName: String): String {
         val resolver = requireContext().contentResolver
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf") // Adjust MIME type if needed
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Documents/ChatDocuments")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Documents/PingMe")
         }
         val uri = resolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
         uri?.let {
@@ -379,7 +390,7 @@ class Message : Fragment(R.layout.fragment_message) {
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/ChatVideos")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/PingMeVideos")
         }
         return resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
             ?.let { uri ->
@@ -397,7 +408,7 @@ class Message : Fragment(R.layout.fragment_message) {
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/ChatImages")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/PingMeImages")
         }
         return resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
             ?.let { uri ->
@@ -407,6 +418,7 @@ class Message : Fragment(R.layout.fragment_message) {
                 uri.toString()
             }
     }
+
 
     private fun listenForMessages() {
         thread {
@@ -449,15 +461,12 @@ class Message : Fragment(R.layout.fragment_message) {
                                     dataInputStream.readFully(videoBytes, offset, chunkSize)
                                     offset += chunkSize
                                 }
-
-                                // Save video to file
                                 saveVideoToDeviceStorage(videoBytes)?.let { videoPath ->
                                     activity?.runOnUiThread {
                                         addMessage(null, false, videoUri = videoPath)
                                     }
                                 }
                             }
-
                             "DOCUMENT" -> {
                                 val documentName = dataInputStream.readUTF()
                                 val documentSize = dataInputStream.readInt()
@@ -480,6 +489,7 @@ class Message : Fragment(R.layout.fragment_message) {
                                     )
                                 }
                             }
+
                             "CONTACT" -> {
                                 val contactName = dataInputStream.readUTF()
                                 val contactPhone = dataInputStream.readUTF()

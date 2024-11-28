@@ -27,6 +27,7 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
     companion object {
         const val LOCATION_PERMISSION_REQUEST_CODE = 1
+        const val STORAGE_PERMISSION_REQUEST_CODE = 2
         const val TAG = "WiFiDirectDemo"
     }
 
@@ -83,21 +84,37 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
         // Search WiFi button action
         binding.rightImage.setOnClickListener {
-            if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(
-                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                    LOCATION_PERMISSION_REQUEST_CODE
-                )
-            } else {
+            if (isPermissionsGranted()) {
                 binding.lottie.visibility = View.VISIBLE
                 viewModel.discoverPeers()
+            } else {
+                requestPermissions(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_CONTACTS
+                    ), LOCATION_PERMISSION_REQUEST_CODE
+                )
             }
         }
 
         viewModel.registerReceiver(requireContext())
     }
 
-
+    private fun isPermissionsGranted(): Boolean {
+        val locationPermission = ActivityCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val storagePermission = ActivityCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+        val contactsPermission = ActivityCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.READ_CONTACTS
+        ) == PackageManager.PERMISSION_GRANTED
+        return locationPermission && storagePermission && contactsPermission
+    }
 
     override fun onPause() {
         super.onPause()
@@ -119,15 +136,18 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 binding.lottie.visibility = View.VISIBLE
                 viewModel.discoverPeers()
-
             } else {
-                Log.e(TAG, "Permission denied")
+                Log.e(TAG, "Location permission denied")
+            }
+        } else if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Storage permission granted")
+            } else {
+                Log.e(TAG, "Storage permission denied")
             }
         }
-
-
-
     }
+
 
     override fun onResume() {
         super.onResume()
