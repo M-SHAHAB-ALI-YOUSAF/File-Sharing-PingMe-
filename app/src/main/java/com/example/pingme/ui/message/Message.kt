@@ -1,18 +1,18 @@
 package com.example.pingme.ui.message
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -28,7 +28,6 @@ import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
 import kotlin.concurrent.thread
-
 
 class Message : Fragment(R.layout.fragment_message) {
 
@@ -61,27 +60,12 @@ class Message : Fragment(R.layout.fragment_message) {
 
         checkStoragePermission()
 
-
-        binding.root.rootView.viewTreeObserver.addOnGlobalLayoutListener {
-            val r = Rect()
-            binding.root.rootView.getWindowVisibleDisplayFrame(r)
-            val screenHeight = binding.root.rootView.height
-            val keyboardHeight = screenHeight - r.bottom
-            if (keyboardHeight > 100) { // Keyboard is visible
-                binding.messageContainer.setPadding(0, 0, 0, keyboardHeight)
-            } else { // Keyboard is hidden
-                binding.messageContainer.setPadding(0, 0, 0, 0)
-            }
-        }
-
-
         val isGroupOwner = arguments?.getBoolean("isGroupOwner", false) ?: false
         val groupOwnerAddress = arguments?.getString("groupOwnerAddress")
 
         if (isGroupOwner) {
             setupServer()
-        }
-        else {
+        } else {
             setupClient(groupOwnerAddress ?: "")
         }
 
@@ -97,17 +81,21 @@ class Message : Fragment(R.layout.fragment_message) {
             val optionsBottomSheet = OptionsBottomSheet { optionType ->
                 when (optionType) {
                     OptionsBottomSheet.OptionType.IMAGE -> {
-                        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI).apply {
+                        val intent = Intent(
+                            Intent.ACTION_PICK,
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                        ).apply {
                             type = "image/*" // Images only
-                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) // Allow multiple selections
                         }
                         startActivityForResult(intent, REQUEST_IMAGE_PICK)
                     }
 
                     OptionsBottomSheet.OptionType.VIDEO -> {
-                        val intent = Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).apply {
+                        val intent = Intent(
+                            Intent.ACTION_PICK,
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                        ).apply {
                             type = "video/*" // Videos only
-                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true) // Allow multiple selections
                         }
                         startActivityForResult(intent, REQUEST_VIDEO_PICK)
                     }
@@ -136,35 +124,21 @@ class Message : Fragment(R.layout.fragment_message) {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            REQUEST_IMAGE_PICK, REQUEST_VIDEO_PICK -> {
-                val clipData = data?.clipData
-                val uriList = mutableListOf<Uri>()
+            REQUEST_IMAGE_PICK -> {
+                val imageUri = data?.data
+                imageUri?.let { processImageSelection(it) }
+            }
 
-                val itemSelected = clipData?.itemCount?.let { minOf(it, 10) }
-                if (clipData != null) {
-                    for (i in 0 until itemSelected!!) {
-                        uriList.add(clipData.getItemAt(i).uri)
-                    }
-                } else {
-                    // Single item selected
-                    data?.data?.let { uriList.add(it) }
-                }
-
-                // Process each selected URI
-                uriList.forEach { uri ->
-                    if (requestCode == REQUEST_IMAGE_PICK) {
-                        processImageSelection(uri)
-                    } else if (requestCode == REQUEST_VIDEO_PICK) {
-                        processVideoSelection(uri)
-                    }
-                }
+            REQUEST_VIDEO_PICK -> {
+                val videoUri = data?.data
+                videoUri?.let { processVideoSelection(it) }
             }
 
             REQUEST_DOCUMENT_PICK -> {
                 val documentUri = data?.data
                 if (documentUri != null) {
                     val documentName =
-                        getFileName(documentUri)
+                        getFileName(documentUri) // Helper function to get the file name
                     sendDocument(documentUri, documentName)
                     addMessage(
                         message = null,
@@ -178,7 +152,7 @@ class Message : Fragment(R.layout.fragment_message) {
             REQUEST_CONTACT_PICK -> {
                 val contactUri = data?.data
                 if (contactUri != null) {
-
+                    // Extract contact details
                     val contactDetails = getContactDetails(contactUri)
                     sendContact(contactDetails)
                     addMessage(
@@ -192,7 +166,6 @@ class Message : Fragment(R.layout.fragment_message) {
         }
     }
 
-    @SuppressLint("Range")
     private fun getContactDetails(contactUri: Uri): Pair<String, String> {
         val cursor = requireContext().contentResolver.query(contactUri, null, null, null, null)
         var contactName = "Unknown"
@@ -233,6 +206,7 @@ class Message : Fragment(R.layout.fragment_message) {
         return fileName
     }
 
+
     private fun processImageSelection(imageUri: Uri) {
         try {
             val inputStream = requireContext().contentResolver.openInputStream(imageUri)
@@ -247,7 +221,7 @@ class Message : Fragment(R.layout.fragment_message) {
 
     private fun processVideoSelection(videoUri: Uri) {
         try {
-            val thumbnail = getVideoThumbnail(videoUri)
+            val thumbnail = getVideoThumbnail(videoUri) // Generate thumbnail
             val videoBytes = requireContext().contentResolver.openInputStream(videoUri)?.readBytes()
             val videoSize = videoBytes?.size ?: 0
             sendVideo(videoUri, videoBytes, videoSize)
@@ -271,6 +245,7 @@ class Message : Fragment(R.layout.fragment_message) {
             null
         }
     }
+
 
     private fun sendImage(imageUri: Uri) {
         thread {
@@ -305,7 +280,7 @@ class Message : Fragment(R.layout.fragment_message) {
                     dataOutputStream.writeUTF("VIDEO")
                     dataOutputStream.writeInt(videoSize)
 
-
+                    // Send the video in chunks
                     var offset = 0
                     val chunkSize = 1024
                     while (offset < videoSize) {
@@ -332,8 +307,8 @@ class Message : Fragment(R.layout.fragment_message) {
                 socket?.getOutputStream()?.let { outputStream ->
                     val dataOutputStream = DataOutputStream(outputStream)
                     dataOutputStream.writeUTF("DOCUMENT")
-                    dataOutputStream.writeUTF(documentName)
-                    dataOutputStream.writeInt(byteArray.size)
+                    dataOutputStream.writeUTF(documentName) // Send document name
+                    dataOutputStream.writeInt(byteArray.size) // Send document size
                     while (offset < byteArray.size) {
                         val sizeToSend = (byteArray.size - offset).coerceAtMost(chunkSize)
                         dataOutputStream.writeInt(sizeToSend)
@@ -353,14 +328,16 @@ class Message : Fragment(R.layout.fragment_message) {
                 socket?.getOutputStream()?.let { outputStream ->
                     val dataOutputStream = DataOutputStream(outputStream)
                     dataOutputStream.writeUTF("CONTACT")
-                    dataOutputStream.writeUTF(contactDetails.first)
-                    dataOutputStream.writeUTF(contactDetails.second)
+                    dataOutputStream.writeUTF(contactDetails.first)  // Contact name
+                    dataOutputStream.writeUTF(contactDetails.second) // Contact phone number
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
             }
         }
     }
+
+
 
     private fun sendMessage(message: String) {
         thread {
@@ -384,7 +361,7 @@ class Message : Fragment(R.layout.fragment_message) {
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf") // Adjust MIME type if needed
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Documents/PingMe")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Documents/ChatDocuments")
         }
         val uri = resolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
         uri?.let {
@@ -395,13 +372,14 @@ class Message : Fragment(R.layout.fragment_message) {
         return uri.toString()
     }
 
+
     private fun saveVideoToDeviceStorage(videoBytes: ByteArray): String? {
         val filename = "VID_${System.currentTimeMillis()}.mp4"
         val resolver = requireContext().contentResolver
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/PingMeVideos")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Movies/ChatVideos")
         }
         return resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
             ?.let { uri ->
@@ -412,13 +390,14 @@ class Message : Fragment(R.layout.fragment_message) {
             }
     }
 
+
     private fun saveImageToDeviceStorage(bitmap: Bitmap): String? {
         val filename = "IMG_${System.currentTimeMillis()}.jpg"
         val resolver = requireContext().contentResolver
         val contentValues = android.content.ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/PingMeImages")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/ChatImages")
         }
         return resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
             ?.let { uri ->
@@ -428,7 +407,6 @@ class Message : Fragment(R.layout.fragment_message) {
                 uri.toString()
             }
     }
-
 
     private fun listenForMessages() {
         thread {
@@ -471,6 +449,8 @@ class Message : Fragment(R.layout.fragment_message) {
                                     dataInputStream.readFully(videoBytes, offset, chunkSize)
                                     offset += chunkSize
                                 }
+
+                                // Save video to file
                                 saveVideoToDeviceStorage(videoBytes)?.let { videoPath ->
                                     activity?.runOnUiThread {
                                         addMessage(null, false, videoUri = videoPath)
@@ -500,7 +480,6 @@ class Message : Fragment(R.layout.fragment_message) {
                                     )
                                 }
                             }
-
                             "CONTACT" -> {
                                 val contactName = dataInputStream.readUTF()
                                 val contactPhone = dataInputStream.readUTF()
@@ -516,8 +495,7 @@ class Message : Fragment(R.layout.fragment_message) {
                         }
                     }
                 }
-            }
-            catch (e: IOException) {
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
         }
