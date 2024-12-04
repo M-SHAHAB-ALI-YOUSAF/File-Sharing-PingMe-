@@ -9,36 +9,62 @@
     app:cardUseCompatPadding="true"
     app:contentPadding="20dp">
 
-    <LinearLayout
+    <!-- Using a RelativeLayout to position the button -->
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/tvDeviceName"
+        <!-- LinearLayout containing TextViews -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="6dp"
-            android:gravity="center_vertical"
-            android:textSize="20sp"
-            tools:text="@string/device_name" />
+            android:orientation="vertical"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true">
 
-        <TextView
-            android:id="@+id/tvDeviceAddress"
-            android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/tvDeviceName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="6dp"
+                android:gravity="center_vertical"
+                android:fontFamily="@font/productsansregular"
+                android:textSize="16sp"
+                tools:text="@string/device_name" />
+
+            <TextView
+                android:id="@+id/tvDeviceAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:fontFamily="@font/productsansregular"
+                android:textSize="12sp"
+                tools:text="192.168.0.1" />
+
+            <TextView
+                android:id="@+id/tvDeviceDetails"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/productsansregular"
+                android:layout_marginVertical="6dp"
+                android:textSize="12sp"
+                tools:text="@string/status" />
+
+        </LinearLayout>
+
+        <!-- Connect Button at the right center -->
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:textSize="18sp"
-            tools:text="192.168.0.1" />
+            android:background="@drawable/buttonborder"
+            android:textColor="@color/black"
+            android:text="@string/connect"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:fontFamily="@font/productsansregular"
+            android:layout_marginEnd="5dp"/>
 
-        <TextView
-            android:id="@+id/tvDeviceDetails"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginVertical="6dp"
-            android:textSize="18sp"
-            tools:text="@string/status" />
-
-    </LinearLayout>
+    </RelativeLayout>
 
 </androidx.cardview.widget.CardView>

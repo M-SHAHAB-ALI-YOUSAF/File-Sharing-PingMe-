@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.navigation.findNavController
 import com.example.pingme.MainActivity
@@ -47,23 +49,11 @@ class WifiP2pBroadcastReceiver(
                                 putBoolean("isGroupOwner", isGroupOwner)
                                 putString("groupOwnerAddress", groupOwnerAddress)
                             }
-                            navController?.navigate(R.id.action_discoverDevices_to_message2, bundle)
+                            Handler(Looper.getMainLooper()).post {
+                                navController?.navigate(R.id.action_discoverDevices_to_message2, bundle)
+                            }
                         }
                     }
-                } else {
-                    manager.removeGroup(channel, object : WifiP2pManager.ActionListener {
-                        override fun onSuccess() {
-                            Log.d("WiFiP2P", "Group removed successfully after disconnection")
-                            val navController = (context as? MainActivity)?.findNavController(R.id.nav_host_fragment)
-                            navController?.navigate(R.id.action_message2_to_discoverDevices)
-
-                        }
-
-                        override fun onFailure(reason: Int) {
-                            Log.e("WiFiP2P", "Failed to remove group: $reason")
-                        }
-                    })
-
                 }
             }
             WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
@@ -71,4 +61,6 @@ class WifiP2pBroadcastReceiver(
             }
         }
     }
+
+
 }

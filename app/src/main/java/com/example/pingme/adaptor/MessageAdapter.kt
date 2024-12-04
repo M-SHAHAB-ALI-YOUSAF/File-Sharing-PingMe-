@@ -4,19 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Bundle
-import android.provider.Settings.Global.putString
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.FragmentManager
-import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.pingme.R
@@ -96,7 +92,7 @@ class MessageAdapter(
                     }
                 }
             }
-            messageItem.documentUri != null -> { // Display document message
+            messageItem.documentUri != null -> {
                 if (holder is SentMessageViewHolder) {
                     holder.documentLayout.visibility = View.VISIBLE
                     holder.documentName.text = messageItem.documentName
@@ -106,7 +102,6 @@ class MessageAdapter(
                     holder.frameLayout.visibility = View.GONE
                     holder.messageTimestamp.text = formattedTime
 
-                    // Handle document click (if necessary)
                     holder.documentLayout.setOnClickListener {
                         openDocument(holder.itemView.context, messageItem.documentUri)
                     }
@@ -119,14 +114,13 @@ class MessageAdapter(
                     holder.frameLayout.visibility = View.GONE
                     holder.messageTimestamp.text = formattedTime
 
-                    // Handle document click (if necessary)
                     holder.documentLayout.setOnClickListener {
                         openDocument(holder.itemView.context, messageItem.documentUri)
                     }
                 }
             }
 
-            messageItem.imageUri != null -> { // Display image from URI
+            messageItem.imageUri != null -> {
                 if (holder is SentMessageViewHolder) {
                     Glide.with(holder.itemView.context)
                         .load(messageItem.imageUri)
@@ -140,7 +134,6 @@ class MessageAdapter(
                         showImagePreview(messageItem.imageUri)
                     }
 
-                    // Hide video icon for image message
                     holder.videoIcon.visibility = View.GONE
                 } else if (holder is ReceivedMessageViewHolder) {
                     Glide.with(holder.itemView.context)
@@ -155,15 +148,14 @@ class MessageAdapter(
                         showImagePreview(messageItem.imageUri)
                     }
 
-                    // Hide video icon for image message
                     holder.videoIcon.visibility = View.GONE
                 }
             }
 
-            messageItem.videoUri != null -> { // Display video
+            messageItem.videoUri != null -> {
                 if (holder is SentMessageViewHolder) {
                     Glide.with(holder.itemView.context)
-                        .load(messageItem.videoUri) // Load video thumbnail
+                        .load(messageItem.videoUri)
                         .placeholder(R.drawable.loader)
                         .into(holder.messageImageView)
 
@@ -175,11 +167,10 @@ class MessageAdapter(
                         showVideoPreview(messageItem.videoUri)
                     }
 
-                    // Show video icon for video message
                     holder.videoIcon.visibility = View.VISIBLE
                 } else if (holder is ReceivedMessageViewHolder) {
                     Glide.with(holder.itemView.context)
-                        .load(messageItem.videoUri) // Load video thumbnail
+                        .load(messageItem.videoUri)
                         .placeholder(R.drawable.loader)
                         .into(holder.messageImageView)
 
@@ -191,12 +182,11 @@ class MessageAdapter(
                         showVideoPreview(messageItem.videoUri)
                     }
 
-                    // Show video icon for video message
                     holder.videoIcon.visibility = View.VISIBLE
                 }
             }
 
-            messageItem.imageBitmap != null -> { // Fallback to bitmap if URI is not available
+            messageItem.imageBitmap != null -> {
                 val byteArray = bitmapToByteArray(messageItem.imageBitmap)
 
                 if (holder is SentMessageViewHolder) {
@@ -212,7 +202,6 @@ class MessageAdapter(
                         showImagePreview(null, byteArray)
                     }
 
-                    // Hide video icon for image message
                     holder.videoIcon.visibility = View.GONE
                 } else if (holder is ReceivedMessageViewHolder) {
                     Glide.with(holder.itemView.context)
@@ -227,12 +216,11 @@ class MessageAdapter(
                         showImagePreview(null, byteArray)
                     }
 
-                    // Hide video icon for image message
                     holder.videoIcon.visibility = View.GONE
                 }
             }
 
-            messageItem.message != null -> { // Display text message
+            messageItem.message != null -> {
                 if (holder is SentMessageViewHolder) {
                     holder.messageTextView.text = messageItem.message
                     holder.messageImageView.visibility = View.GONE
@@ -240,7 +228,6 @@ class MessageAdapter(
                     holder.messageTextView.visibility = View.VISIBLE
                     holder.messageTimestamp.text = formattedTime
 
-                    // Hide video icon for text message
                     holder.videoIcon.visibility = View.GONE
                 } else if (holder is ReceivedMessageViewHolder) {
                     holder.messageTextView.text = messageItem.message
@@ -249,7 +236,6 @@ class MessageAdapter(
                     holder.messageTextView.visibility = View.VISIBLE
                     holder.messageTimestamp.text = formattedTime
 
-                    // Hide video icon for text message
                     holder.videoIcon.visibility = View.GONE
                 }
             }

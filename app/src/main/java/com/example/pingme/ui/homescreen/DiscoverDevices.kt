@@ -2,10 +2,12 @@ package com.example.pingme.ui.homescreen
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -16,6 +18,11 @@ import com.example.pingme.R
 import com.example.pingme.adaptor.DeviceAdapter
 import com.example.pingme.databinding.FragmentDiscoverDevicesBinding
 import com.google.android.material.snackbar.Snackbar
+import android.content.Context
+import android.content.Intent
+import android.location.LocationManager
+import android.provider.Settings
+import com.example.pingme.ui.ProgressDialogFragment
 
 class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
@@ -31,6 +38,7 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         const val TAG = "WiFiDirectDemo"
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onViewCreated(view: android.view.View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentDiscoverDevicesBinding.bind(view)
@@ -52,20 +60,46 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         // Observers
         viewModel.deviceList.observe(viewLifecycleOwner) { devices ->
             if (devices.isNotEmpty()) {
+//                binding.lottie.cancelAnimation()
                 binding.lottie.visibility = View.GONE
-            } else {
-                binding.lottie.visibility = View.VISIBLE
             }
+
             deviceAdapter.updateDevices(devices)
         }
+//        viewModel.deviceList.observe(viewLifecycleOwner) { devices ->
+//            deviceAdapter.updateDevices(devices)
+//        }
 
-        viewModel.connectionStatus.observe(viewLifecycleOwner, Observer { status ->
-            Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show()
-        })
 
-        viewModel.errorMessage.observe(viewLifecycleOwner, Observer { error ->
-            Snackbar.make(binding.root, error, Snackbar.LENGTH_LONG).show()
-        })
+//        viewModel.connectionStatus.observe(viewLifecycleOwner, Observer { status ->
+//            Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show()
+//        })
+////
+        viewModel.errorMessage.observe(viewLifecycleOwner) { error ->
+            if (error.isNotEmpty()) {
+                // Show error message if connection fails or times out
+                Snackbar.make(binding.root, error, Snackbar.LENGTH_LONG).show()
+                // Allow the user to connect to another device after timeout
+                viewModel.cancelProgressDialog() // Explicitly dismiss progress dialog
+            }
+        }
+
+
+        val progressDialog = ProgressDialogFragment()
+
+        viewModel.showProgressDialog.observe(viewLifecycleOwner) { show ->
+            if (show) {
+                // Show progress dialog
+                if (progressDialog.isAdded.not()) {
+                    progressDialog.show(parentFragmentManager, "progressDialog")
+                }
+            } else {
+                // Dismiss progress dialog
+                if (progressDialog.isAdded) {
+                    progressDialog.dismiss()
+                }
+            }
+        }
 
         // In your Fragment
         viewModel.navigateToMessageFragment.observe(viewLifecycleOwner, Observer { result ->
@@ -83,38 +117,65 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         })
 
         // Search WiFi button action
-        binding.rightImage.setOnClickListener {
-            if (isPermissionsGranted()) {
-                binding.lottie.visibility = View.VISIBLE
-                viewModel.discoverPeers()
+        binding.searchDevices.setOnClickListener {
+            if (isLocationEnabled()) {
+                if (isPermissionsGranted()) {
+                    binding.lottie.visibility = View.VISIBLE
+                    viewModel.discoverPeers()
+                } else {
+                    requestPermissions(
+                        getRequiredPermissions(),
+                        LOCATION_PERMISSION_REQUEST_CODE
+                    )
+                }
             } else {
-                requestPermissions(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_CONTACTS
-                    ), LOCATION_PERMISSION_REQUEST_CODE
-                )
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                startActivity(intent)
             }
         }
 
         viewModel.registerReceiver(requireContext())
     }
 
+    private fun getRequiredPermissions(): Array<String> {
+        val permissions = mutableListOf<String>()
+
+        // Always require fine location for Wi-Fi Direct and nearby devices
+        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        // For Android 13 (SDK 33) and above, we can also request coarse location and media permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+            permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+
+        } else {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+
+        // Adding coarse location for approximate location
+        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        permissions.add(Manifest.permission.READ_CONTACTS)
+        return permissions.toTypedArray()
+    }
+
     private fun isPermissionsGranted(): Boolean {
         val locationPermission = ActivityCompat.checkSelfPermission(
             requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        val storagePermission = ActivityCompat.checkSelfPermission(
-            requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE
+        val coarseLocationPermission = ActivityCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val contactsPermission = ActivityCompat.checkSelfPermission(
             requireContext(), Manifest.permission.READ_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
-        return locationPermission && storagePermission && contactsPermission
+
+        return locationPermission && coarseLocationPermission && contactsPermission &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || // Handle legacy permissions
+                        (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED &&
+                                ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED))
     }
+
 
     override fun onPause() {
         super.onPause()
@@ -126,6 +187,7 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         _binding = null
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -151,11 +213,17 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
     override fun onResume() {
         super.onResume()
-        // Re-register the receiver if needed
+        binding.lottie.visibility = View.GONE
         viewModel.registerReceiver(requireContext())
+    }
 
-        // Recheck the connection info
-        viewModel.checkConnectionInfo()
+
+
+
+    fun isLocationEnabled(): Boolean {
+        val locationManager = context?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
 

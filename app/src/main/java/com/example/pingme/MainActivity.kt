@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
                 manager.removeGroup(channel, object : WifiP2pManager.ActionListener {
                     override fun onSuccess() {
                         Log.d("WiFiDirect", "Disconnected successfully")
+
                     }
 
                     override fun onFailure(reason: Int) {
