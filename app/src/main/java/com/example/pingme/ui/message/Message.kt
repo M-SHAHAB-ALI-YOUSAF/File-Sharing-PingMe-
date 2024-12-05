@@ -83,6 +83,8 @@ class Message : Fragment(R.layout.fragment_message) {
                 val networkInfo = intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
                 if (networkInfo != null && !networkInfo.isConnected) {
                     activity?.runOnUiThread {
+                        socket?.close()
+                        serverSocket?.close()
                         val dialogFragment = DialogBox()
                         dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
                     }
@@ -143,7 +145,6 @@ class Message : Fragment(R.layout.fragment_message) {
                             dialog.dismiss()
                         }
                         .create()
-
                     dialog.show()
                 }
             })
@@ -500,10 +501,22 @@ class Message : Fragment(R.layout.fragment_message) {
                         when (messageType) {
                             "TEXT" -> {
                                 val message = dataInputStream.readUTF()
-
+                                if (message == "DISCONNECT") {
+                                    activity?.runOnUiThread {
+                                        AlertDialog.Builder(requireContext())
+                                            .setTitle("Disconnected")
+                                            .setMessage("The other user has left the chat.")
+                                            .setPositiveButton("OK") { _, _ ->
+                                                navigateBackToDiscover() // Navigate back to discover
+                                            }
+                                            .show()
+                                    }
+                                    break
+                                } else {
                                 activity?.runOnUiThread {
                                     addMessage(message, false, null)
                                 }
+                            }
                             }
 
                             "IMAGE" -> {
@@ -670,7 +683,6 @@ class Message : Fragment(R.layout.fragment_message) {
     }
 
 
-
     private fun setupServer() {
         thread {
             try {
@@ -727,10 +739,15 @@ class Message : Fragment(R.layout.fragment_message) {
     }
 
     override fun onDestroy() {
+        try {
+            socket?.close()
+            serverSocket?.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
         super.onDestroy()
-        disconnectAndNavigate()
-
     }
+
 
 
 
