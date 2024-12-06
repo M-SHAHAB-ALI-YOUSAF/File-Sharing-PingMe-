@@ -22,7 +22,6 @@ import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
 import android.provider.Settings
-import com.example.pingme.ui.ProgressDialogFragment
 
 class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
@@ -49,6 +48,7 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         // Set up RecyclerView
         deviceAdapter = DeviceAdapter(emptyList()) { selectedDevice ->
             Log.d(TAG, "Selected device: ${selectedDevice.deviceName} (${selectedDevice.deviceAddress})")
+            binding.lottieWaiting.visibility= View.VISIBLE
             viewModel.connectToDevice(selectedDevice)
         }
 
@@ -60,44 +60,14 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         // Observers
         viewModel.deviceList.observe(viewLifecycleOwner) { devices ->
             if (devices.isNotEmpty()) {
-//                binding.lottie.cancelAnimation()
                 binding.lottie.visibility = View.GONE
             }
 
             deviceAdapter.updateDevices(devices)
         }
-//        viewModel.deviceList.observe(viewLifecycleOwner) { devices ->
-//            deviceAdapter.updateDevices(devices)
-//        }
-
-
-//        viewModel.connectionStatus.observe(viewLifecycleOwner, Observer { status ->
-//            Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show()
-//        })
-////
         viewModel.errorMessage.observe(viewLifecycleOwner) { error ->
             if (error.isNotEmpty()) {
-                // Show error message if connection fails or times out
-                Snackbar.make(binding.root, error, Snackbar.LENGTH_LONG).show()
-                // Allow the user to connect to another device after timeout
-                viewModel.cancelProgressDialog() // Explicitly dismiss progress dialog
-            }
-        }
-
-
-        val progressDialog = ProgressDialogFragment()
-
-        viewModel.showProgressDialog.observe(viewLifecycleOwner) { show ->
-            if (show) {
-                // Show progress dialog
-                if (progressDialog.isAdded.not()) {
-                    progressDialog.show(parentFragmentManager, "progressDialog")
-                }
-            } else {
-                // Dismiss progress dialog
-                if (progressDialog.isAdded) {
-                    progressDialog.dismiss()
-                }
+                binding.lottieWaiting.visibility=View.GONE
             }
         }
 
@@ -111,16 +81,21 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
                     putBoolean("isGroupOwner", isGroupOwner)
                     putString("groupOwnerAddress", groupOwnerAddress)
                 }
-
                 navController.navigate(R.id.action_discoverDevices_to_message2, bundle)
             }
         })
 
         // Search WiFi button action
         binding.searchDevices.setOnClickListener {
+            if (!isWifiEnabled()) {
+                promptEnableWifi()
+                return@setOnClickListener
+            }
+
             if (isLocationEnabled()) {
                 if (isPermissionsGranted()) {
                     binding.lottie.visibility = View.VISIBLE
+                    binding.lottieWaiting.visibility= View.GONE
                     viewModel.discoverPeers()
                 } else {
                     requestPermissions(
@@ -224,6 +199,19 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         val locationManager = context?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+    private fun isWifiEnabled(): Boolean {
+        val wifiManager = requireContext().applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+        return wifiManager.isWifiEnabled
+    }
+
+    private fun promptEnableWifi() {
+        Snackbar.make(binding.root, "Wi-Fi is disabled. Please enable Wi-Fi to discover devices.", Snackbar.LENGTH_LONG)
+            .setAction("Enable") {
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                startActivity(intent)
+            }.show()
     }
 
 

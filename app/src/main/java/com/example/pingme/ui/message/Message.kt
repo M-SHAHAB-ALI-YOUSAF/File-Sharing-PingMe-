@@ -23,11 +23,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,6 +40,9 @@ import com.example.pingme.databinding.FragmentMessageBinding
 import com.example.pingme.datamodel.MessageItem
 import com.example.pingme.ui.bottomsheet.OptionsBottomSheet
 import com.example.pingme.ui.dialogbox.DialogBox
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -56,9 +61,7 @@ class Message : Fragment(R.layout.fragment_message) {
     private var socket: Socket? = null
     private var serverSocket: ServerSocket? = null
     private val messages = mutableListOf<MessageItem>()
-    private lateinit var manager: WifiP2pManager
-    private lateinit var channel: WifiP2pManager.Channel
-    private lateinit var wifiDirectReceiver: BroadcastReceiver
+
 
     companion object {
         const val PORT = 8888
@@ -71,42 +74,11 @@ class Message : Fragment(R.layout.fragment_message) {
     }
 
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        manager = requireContext().getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
-        channel = manager.initialize(requireContext(), Looper.getMainLooper(), null)
-
-        wifiDirectReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val action = intent.action
-            if (action == WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION) {
-                val networkInfo = intent.getParcelableExtra<NetworkInfo>(WifiP2pManager.EXTRA_NETWORK_INFO)
-                if (networkInfo != null && !networkInfo.isConnected) {
-                    activity?.runOnUiThread {
-                        socket?.close()
-                        serverSocket?.close()
-                        val dialogFragment = DialogBox()
-                        dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
-                    }
-                }
-            }
-        }
-    }
-}
-    private fun disconnectAndNavigate() {
-        manager.removeGroup(channel, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                navigateBackToDiscover()
-            }
-
-            override fun onFailure(reason: Int) {
-                navigateBackToDiscover()
-            }
-        })
-    }
 
     // Navigate back to DiscoverFragment
     private fun navigateBackToDiscover() {
+        socket?.close()
+        serverSocket?.close()
         findNavController().navigate(R.id.action_message2_to_discoverDevices)
     }
 
@@ -131,32 +103,25 @@ class Message : Fragment(R.layout.fragment_message) {
             setupClient(groupOwnerAddress ?: "")
         }
 
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    val dialog = AlertDialog.Builder(requireContext())
-                        .setTitle("Exit Chat")
-                        .setMessage("Are you sure you want to leave the chat?")
-                        .setPositiveButton("Yes") { _, _ ->
-                            disconnectAndNavigate()
-                        }
-                        .setNegativeButton("No") { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        .create()
-                    dialog.show()
-                }
-            })
-
-        manager.requestConnectionInfo(channel) { info ->
-            if (!info.groupFormed) {
-                activity?.runOnUiThread {
-                    findNavController().navigate(R.id.action_message2_to_discoverDevices)
-                }
-            }
-        }
-
+//        requireActivity().onBackPressedDispatcher.addCallback(
+//            viewLifecycleOwner,
+//            object : OnBackPressedCallback(true) {
+//                override fun handleOnBackPressed() {
+//                    val dialog = AlertDialog.Builder(requireContext())
+//                        .setTitle("Exit Chat")
+//                        .setMessage("Are you sure you want to leave the chat?")
+//                        .setPositiveButton("Yes") { _, _ ->
+//                            socket?.close()
+//                            serverSocket?.close()
+//                            navigateBackToDiscover()
+//                        }
+//                        .setNegativeButton("No") { dialog, _ ->
+//                            dialog.dismiss()
+//                        }
+//                        .create()
+//                    dialog.show()
+//                }
+//            })
 
         binding.btnSendMessage.setOnClickListener {
             val message = binding.etMessage.text.toString()
@@ -636,14 +601,54 @@ class Message : Fragment(R.layout.fragment_message) {
                                     )
                                 }
                             }
+                            "DISCONNECT" -> {
+                                sendAcknowledge()
+                                activity?.runOnUiThread {
+                                    if (isAdded) {
+//                                        Toast.makeText(
+//                                            context,
+//                                            "The other device disconnected.",
+//                                            Toast.LENGTH_SHORT
+//                                        ).show()
+//                                        socket?.close()
+//                                        serverSocket?.close()
+//                                        val dialogFragment = DialogBox()
+//                                        dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             } catch (e: IOException) {
+                activity?.runOnUiThread {
+                    if (isAdded) {
+                        socket?.close()
+                        serverSocket?.close()
+                        val dialogFragment = DialogBox()
+                        dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
+                    }
+                }
+            }
+        }
+    }
+    private fun sendAcknowledge() {
+        thread {
+            try {
+                socket?.getOutputStream()?.let { outputStream ->
+                    val dataOutputStream = DataOutputStream(outputStream)
+                    dataOutputStream.writeUTF("ACK")
+                    socket?.close()
+                    serverSocket?.close()
+                }
+            } catch (e: IOException) {
+                socket?.close()
+                serverSocket?.close()
                 e.printStackTrace()
             }
         }
     }
+
 
     private fun updateProgressBar(progress: Int) {
         binding.progressBar.progress = progress
@@ -726,41 +731,28 @@ class Message : Fragment(R.layout.fragment_message) {
             )
         }
     }
-
     override fun onDestroyView() {
-        try {
-            socket?.close()
-            serverSocket?.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+
+                // Send disconnect message to the other device
+                socket?.getOutputStream()?.let { outputStream ->
+                    val dataOutputStream = DataOutputStream(outputStream)
+                    dataOutputStream.writeUTF("DISCONNECT")
+                    socket?.close()
+                    serverSocket?.close()
+                }
+
+                // Close the socket
+                socket?.close()
+                serverSocket?.close()
+
+            } catch (e: IOException) {
+                socket?.close()
+                serverSocket?.close()
+                e.printStackTrace()
+            }
         }
-        _binding = null
         super.onDestroyView()
-    }
-
-    override fun onDestroy() {
-        try {
-            socket?.close()
-            serverSocket?.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-        super.onDestroy()
-    }
-
-
-
-
-    override fun onResume() {
-        super.onResume()
-        val intentFilter = IntentFilter().apply {
-            addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
-        }
-        requireContext().registerReceiver(wifiDirectReceiver, intentFilter)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        requireContext().unregisterReceiver(wifiDirectReceiver)
     }
 }

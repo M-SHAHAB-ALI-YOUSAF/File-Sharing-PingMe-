@@ -119,13 +119,12 @@ class DiscoverDevicesViewModel : ViewModel() {
         // Start connection attempt
         wifiP2pManager.connect(channel, config, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
-                // Connection started, wait for result
                 wifiP2pManager.requestConnectionInfo(channel, connectionInfoListener)
 
                 // Start the timeout countdown (15 seconds)
                 Handler(Looper.getMainLooper()).postDelayed({
                     if (_connectionStatus.value != "Connected") {
-                        // Connection timed out, show a message
+                        cancelConnection()
                         _showProgressDialog.postValue(false) // Dismiss progress dialog
                         _errorMessage.postValue("Connection timed out. You can try again.")
                     }
@@ -139,8 +138,16 @@ class DiscoverDevicesViewModel : ViewModel() {
         })
     }
 
+    fun cancelConnection() {
+        wifiP2pManager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                _connectionStatus.postValue("Connection attempt canceled successfully.")
+            }
 
-    fun cancelProgressDialog() {
-        _showProgressDialog.postValue(false) // Explicitly dismiss progress dialog if needed
+            override fun onFailure(reason: Int) {
+                _errorMessage.postValue("Failed to cancel connection: $reason")
+            }
+        })
     }
+
 }
