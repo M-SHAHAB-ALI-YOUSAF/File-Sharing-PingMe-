@@ -40,9 +40,12 @@ import com.example.pingme.databinding.FragmentMessageBinding
 import com.example.pingme.datamodel.MessageItem
 import com.example.pingme.ui.bottomsheet.OptionsBottomSheet
 import com.example.pingme.ui.dialogbox.DialogBox
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -61,7 +64,7 @@ class Message : Fragment(R.layout.fragment_message) {
     private var socket: Socket? = null
     private var serverSocket: ServerSocket? = null
     private val messages = mutableListOf<MessageItem>()
-
+    private var isDialogShown = false
 
     companion object {
         const val PORT = 8888
@@ -102,30 +105,19 @@ class Message : Fragment(R.layout.fragment_message) {
         } else {
             setupClient(groupOwnerAddress ?: "")
         }
-
-//        requireActivity().onBackPressedDispatcher.addCallback(
-//            viewLifecycleOwner,
-//            object : OnBackPressedCallback(true) {
-//                override fun handleOnBackPressed() {
-//                    val dialog = AlertDialog.Builder(requireContext())
-//                        .setTitle("Exit Chat")
-//                        .setMessage("Are you sure you want to leave the chat?")
-//                        .setPositiveButton("Yes") { _, _ ->
-//                            socket?.close()
-//                            serverSocket?.close()
-//                            navigateBackToDiscover()
-//                        }
-//                        .setNegativeButton("No") { dialog, _ ->
-//                            dialog.dismiss()
-//                        }
-//                        .create()
-//                    dialog.show()
-//                }
-//            })
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showExitConfirmationDialog()
+                }
+            }
+        )
 
         binding.btnSendMessage.setOnClickListener {
             val message = binding.etMessage.text.toString()
-            if (message.isNotEmpty()) {
+            // Check if the message is empty or only contains spaces (after trimming)
+            if (message.trim().isNotEmpty()) {
                 sendMessage(message)
                 binding.etMessage.text.clear()
             }
@@ -194,12 +186,7 @@ class Message : Fragment(R.layout.fragment_message) {
                     val documentName =
                         getFileName(documentUri) // Helper function to get the file name
                     sendDocument(documentUri, documentName)
-                    addMessage(
-                        message = null,
-                        isMe = true,
-                        documentName = documentName,
-                        documentUri = documentUri.toString()
-                    )
+
                 }
             }
 
@@ -275,19 +262,10 @@ class Message : Fragment(R.layout.fragment_message) {
 
     private fun processVideoSelection(videoUri: Uri) {
         try {
-            // Generate a thumbnail for the video
-            val thumbnail = getVideoThumbnail(videoUri)
-
-            // Obtain the file size without loading the entire file
             val fileDescriptor = requireContext().contentResolver.openFileDescriptor(videoUri, "r")
             val videoSize = fileDescriptor?.statSize ?: 0L
             fileDescriptor?.close()
-
-            // Send video in chunks
             sendVideo(videoUri, null, videoSize)
-
-            // Update the UI with the thumbnail and video URI
-            addMessage(null, true, videoUri = videoUri.toString(), videoThumbnail = thumbnail)
         } catch (e: IOException) {
             e.printStackTrace()
         }
@@ -306,8 +284,6 @@ class Message : Fragment(R.layout.fragment_message) {
             null
         }
     }
-
-
     private fun sendImage(imageUri: Uri) {
         thread {
             try {
@@ -347,10 +323,29 @@ class Message : Fragment(R.layout.fragment_message) {
                     val fileInputStream = requireContext().contentResolver.openInputStream(videoUri)
                     val buffer = ByteArray(1024 * 1024) // 1 MB buffer
                     var bytesRead: Int
+                    var totalBytesSent: Long = 0
+
+                    // Show progress bar while sending
+                    activity?.runOnUiThread {
+                        binding.progressContainer.visibility = View.VISIBLE
+                        updateProgressBar(0)
+                    }
 
                     while (fileInputStream?.read(buffer).also { bytesRead = it ?: -1 } != -1) {
                         dataOutputStream.writeInt(bytesRead)
                         dataOutputStream.write(buffer, 0, bytesRead)
+
+                        totalBytesSent += bytesRead
+                        val progress = ((totalBytesSent * 100) / videoSize).toInt()
+                        val thumbnail = getVideoThumbnail(videoUri)
+                        // Update the progress bar
+                        activity?.runOnUiThread {
+                            updateProgressBar(progress)
+                            if (progress >= 100) {
+                                addMessage(null, true, videoUri = videoUri.toString(), videoThumbnail = thumbnail)
+                                binding.progressContainer.visibility = View.GONE
+                            }
+                        }
                     }
 
                     fileInputStream?.close()
@@ -361,7 +356,6 @@ class Message : Fragment(R.layout.fragment_message) {
         }
     }
 
-
     private fun sendDocument(documentUri: Uri, documentName: String) {
         thread {
             try {
@@ -369,17 +363,44 @@ class Message : Fragment(R.layout.fragment_message) {
                 val byteArray = inputStream?.readBytes() ?: return@thread
                 val chunkSize = 1024
                 var offset = 0
+                var totalBytesSent = 0L
 
                 socket?.getOutputStream()?.let { outputStream ->
                     val dataOutputStream = DataOutputStream(outputStream)
                     dataOutputStream.writeUTF("DOCUMENT")
                     dataOutputStream.writeUTF(documentName) // Send document name
                     dataOutputStream.writeInt(byteArray.size) // Send document size
+
+                    // Show progress bar while sending
+                    activity?.runOnUiThread {
+                        binding.progressContainer.visibility = View.VISIBLE
+                        updateProgressBar(0) // Reset progress bar
+                    }
+
                     while (offset < byteArray.size) {
                         val sizeToSend = (byteArray.size - offset).coerceAtMost(chunkSize)
                         dataOutputStream.writeInt(sizeToSend)
                         dataOutputStream.write(byteArray, offset, sizeToSend)
                         offset += sizeToSend
+
+                        totalBytesSent += sizeToSend
+                        val progress = ((totalBytesSent * 100) / byteArray.size).toInt()
+
+                        // Update the progress bar
+                        activity?.runOnUiThread {
+                            updateProgressBar(progress)
+
+                            // Hide progress bar when it reaches 100%
+                            if (progress >= 100) {
+                                addMessage(
+                                    message = null,
+                                    isMe = true,
+                                    documentName = documentName,
+                                    documentUri = documentUri.toString()
+                                )
+                                binding.progressContainer.visibility = View.GONE
+                            }
+                        }
                     }
                 }
             } catch (e: IOException) {
@@ -387,6 +408,7 @@ class Message : Fragment(R.layout.fragment_message) {
             }
         }
     }
+
 
     private fun sendContact(contactDetails: Pair<String, String>) {
         thread {
@@ -625,8 +647,16 @@ class Message : Fragment(R.layout.fragment_message) {
                     if (isAdded) {
                         socket?.close()
                         serverSocket?.close()
-                        val dialogFragment = DialogBox()
-                        dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
+                        activity?.runOnUiThread {
+                            if (!isDialogShown) { // Check if dialog is already shown
+                                isDialogShown = true
+                            if (isAdded && !parentFragmentManager.isStateSaved) {
+                                val dialogFragment = DialogBox()
+                                dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
+                            }
+                        }
+                        }
+
                     }
                 }
             }
@@ -755,4 +785,56 @@ class Message : Fragment(R.layout.fragment_message) {
         }
         super.onDestroyView()
     }
+
+    private fun showExitConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Exit Chat")
+            .setMessage("Are you sure you want to exit the chat?")
+            .setPositiveButton("Yes") { _, _ ->
+                // Navigate back or pop the back stack
+                findNavController().popBackStack()
+            }
+            .setNegativeButton("No", null) // Dismiss the dialog
+            .show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(4000) // 4 seconds delay
+
+            withContext(Dispatchers.IO) {
+                try {
+                    if (socket == null || socket?.isClosed == true || !socket?.isConnected!!) {
+                        withContext(Dispatchers.Main) {
+                            if (!isDialogShown) { // Check if dialog is already shown
+                                isDialogShown = true
+                                val dialogFragment = DialogBox()
+                                dialogFragment.show(parentFragmentManager, "CustomDialogFragment")
+                            }
+                        }
+                    }
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                    withContext(Dispatchers.Main) {
+                        if (!isDialogShown) { // Ensure dialog isn't already shown
+                            isDialogShown = true
+                            AlertDialog.Builder(requireContext())
+                                .setTitle("Error")
+                                .setMessage("Connection check failed.")
+                                .setPositiveButton("OK") { _, _ ->
+                                    navigateBackToDiscover()
+                                }
+                                .show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
 }
+
+

@@ -22,6 +22,11 @@ import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
 import android.provider.Settings
+import android.widget.Button
+import android.widget.ImageButton
+import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 
 class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
 
@@ -52,6 +57,14 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
             viewModel.connectToDevice(selectedDevice)
         }
 
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showExitConfirmationDialog()
+                }
+            }
+        )
 
         binding.rvDeviceList.layoutManager = LinearLayoutManager(requireContext())
 
@@ -169,21 +182,46 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            val deniedPermissions = mutableListOf<String>()
+            for (i in permissions.indices) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    deniedPermissions.add(permissions[i])
+                }
+            }
+
+            if (deniedPermissions.isEmpty()) {
+                // All necessary permissions granted
                 binding.lottie.visibility = View.VISIBLE
                 viewModel.discoverPeers()
             } else {
-                Log.e(TAG, "Location permission denied")
-            }
-        } else if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Storage permission granted")
-            } else {
-                Log.e(TAG, "Storage permission denied")
+                handleDeniedPermissions(deniedPermissions)
             }
         }
     }
+
+
+    private fun handleDeniedPermissions(deniedPermissions: List<String>) {
+        val permanentlyDenied = deniedPermissions.filter { permission ->
+            !ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), permission)
+        }
+
+        if (permanentlyDenied.isNotEmpty()) {
+            showAppSettingsPrompt("Some critical permissions are permanently denied. Please enable them in Settings to proceed.")
+        } else {
+            Snackbar.make(
+                binding.root,
+                "The app needs these permissions to function. Please grant them.",
+                Snackbar.LENGTH_LONG
+            )
+                .setAction("Retry") {
+                    requestPermissions(getRequiredPermissions(), LOCATION_PERMISSION_REQUEST_CODE)
+                }
+                .show()
+        }
+    }
+
 
 
     override fun onResume() {
@@ -191,9 +229,6 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
         binding.lottie.visibility = View.GONE
         viewModel.registerReceiver(requireContext())
     }
-
-
-
 
     fun isLocationEnabled(): Boolean {
         val locationManager = context?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -214,7 +249,43 @@ class DiscoverDevices : Fragment(R.layout.fragment_discover_devices) {
             }.show()
     }
 
+    private fun showExitConfirmationDialog() {
+        // Inflate the custom layout
+        val dialogView = layoutInflater.inflate(R.layout.alertbox, null)
 
+        // Create the BottomSheetDialog
+        val bottomSheetDialog = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        bottomSheetDialog.setContentView(dialogView)
+        bottomSheetDialog.setCancelable(false)
+        // Handle buttons
+        val btnYes = dialogView.findViewById<TextView>(R.id.btnYes)
+        val btnNo = dialogView.findViewById<TextView>(R.id.btnNo)
+
+        btnYes.setOnClickListener {
+            requireActivity().finish() // Exit the activity
+            bottomSheetDialog.dismiss()
+        }
+
+        btnNo.setOnClickListener {
+            bottomSheetDialog.dismiss() // Dismiss the dialog
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    private fun showAppSettingsPrompt(message: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Permission Required")
+            .setMessage(message)
+            .setPositiveButton("Open Settings") { _, _ ->
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = android.net.Uri.fromParts("package", requireContext().packageName, null)
+                }
+                startActivity(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
 
 }
 

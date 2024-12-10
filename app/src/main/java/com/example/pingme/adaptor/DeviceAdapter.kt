@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
 import com.example.pingme.R
 import com.example.pingme.helper.WifiP2pUtils
@@ -25,7 +26,21 @@ class DeviceAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val device = wifiP2pDeviceList[position]
         holder.bind(device)
-        holder.btnConnect.setOnClickListener { onDeviceClick(device) }
+
+        holder.btnConnect.setOnClickListener {
+            val context = holder.itemView.context
+            AlertDialog.Builder(context)
+                .setTitle("Connect to Device")
+                .setMessage("Are you sure you want to connect to ${device.deviceName}?")
+                .setPositiveButton("Connect") { dialog, _ ->
+                    dialog.dismiss()
+                    onDeviceClick(device)
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        }
     }
 
     override fun getItemCount(): Int = wifiP2pDeviceList.size

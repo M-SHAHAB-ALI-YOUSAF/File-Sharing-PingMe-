@@ -24,4 +24,6 @@
     <string name="other_device_is_disconnected">Other Device is disconnected.</string>
     <string name="connection_timeout">Connection Timeout</string>
     <string name="ok">Ok</string>
+    <string name="do_you_want_to_exit">Do you want to Exit?</string>
+    <string name="exit">Exit</string>
 </resources>
